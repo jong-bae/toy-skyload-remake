@@ -34,6 +34,11 @@
 - 결정: 게임 로직은 고정 스텝으로 돌고 렌더링과 분리한다.
 - 근거: 기기 성능과 무관하게 같은 손맛을 보장하고, 입력 리플레이로 회귀 테스트를 할 수 있다.
 
+### D-06 (2026-10-16) M0 툴체인 버전
+- 결정: Vite 8, TypeScript 7, Vitest 5, three 0.186을 쓴다. `npm create vite` 대신 설정 파일을 직접 작성했다.
+- 근거: 설치 시점의 최신 버전이다. TypeScript 7은 Go 기반 네이티브 컴파일러라서 `baseUrl`, `moduleResolution: node` 같은 옛 옵션은 쓰지 않고 `moduleResolution: bundler`로 설정했다.
+- 참고: `npm run build`에서 "청크 500KB 초과" 경고가 나온다. three 라이브러리 크기 때문이며 M6 최적화 때 다시 본다.
+
 ## 미결 사항
 
 - 도로 가로 칸 수 (M1에서 확인)

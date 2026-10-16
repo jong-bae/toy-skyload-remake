@@ -5,9 +5,10 @@
 ## M0 준비
 - [x] git 저장소 초기화
 - [x] `.gitignore`에 `original_file/`, `dosplay/`, 녹화 파일 추가
-- [ ] Vite + TypeScript 프로젝트 생성
-- [ ] Vitest 설정, 샘플 테스트 통과
-- [ ] Three.js 설치, 빈 씬 렌더링 확인
+- [x] Vite + TypeScript 프로젝트 생성
+- [x] Vitest 설정, 샘플 테스트 통과
+- [x] Three.js 설치, 빈 씬 렌더링 확인
+- [ ] GitHub 원격 저장소 연결, 첫 푸시
 
 ## M1 측정 (블랙박스)
 - [ ] DOSBox `cycles` 고정값 결정 및 기록
