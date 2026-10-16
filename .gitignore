@@ -1,0 +1,19 @@
+# 원작 파일과 DOS 실행 환경 (라이선스상 재배포 불가)
+original_file/
+dosplay/
+
+# 측정용 녹화·프레임 이미지
+recordings/
+*.avi
+
+# Node / Vite
+node_modules/
+dist/
+*.local
+
+# 에디터, OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
