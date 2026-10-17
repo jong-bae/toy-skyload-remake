@@ -38,6 +38,11 @@ export class Sfx {
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   }
 
+  /** 배경음악 등 다른 소리를 같은 출력에 연결할 때 쓴다. unlock 전에는 null */
+  get audio(): { ctx: AudioContext; out: AudioNode } | null {
+    return this.ctx ? { ctx: this.ctx, out: this.master } : null;
+  }
+
   /** 엔진음. speedLevel이 null이면 끈다 */
   engine(speedLevel: number | null): void {
     if (!this.ctx) return;

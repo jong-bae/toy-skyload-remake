@@ -47,6 +47,9 @@ export class Menu {
         <tr><td>Space</td><td>점프 (누르고 있으면 연속 점프)</td></tr>
         <tr><td>R</td><td>처음부터 다시</td></tr>
         <tr><td>Esc</td><td>스테이지 선택으로</td></tr>
+        <tr><td>C</td><td>화면 전환 (현대식 / 클래식)</td></tr>
+        <tr><td>M</td><td>음악 켜기 / 끄기</td></tr>
+        <tr><td>F</td><td>FPS 표시</td></tr>
       </table>
       <h2>블록</h2>
       <table>

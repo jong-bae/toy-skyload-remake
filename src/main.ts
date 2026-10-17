@@ -1,6 +1,7 @@
 // 앱 진입점: 타이틀 → 스테이지 선택 → 플레이 흐름을 관리하고 선택한 화면 모드로 렌더링한다
 import * as THREE from 'three';
 import { detectEvents } from './audio/events';
+import { Music } from './audio/music';
 import { Sfx } from './audio/sfx';
 import { Session } from './core/session';
 import type { ShipStatus } from './core/simulation';
@@ -8,13 +9,16 @@ import { Keyboard } from './input/keyboard';
 import { STAGES } from './level/catalog';
 import type { Level } from './level/types';
 import { ClassicView } from './render/classic';
+import { ModernView } from './render/modern';
 import type { View } from './render/view';
 import { Dashboard, dashboardValues } from './ui/dashboard';
+import { FpsMeter } from './ui/fps';
 import { Menu, moveCursor, SELECT_COLUMNS } from './ui/menu';
 import { Progress } from './ui/progress';
+import { Settings } from './ui/settings';
 
 const ASPECT = 4 / 3; // 원작 320×200을 4:3 모니터에 표시하던 비율
-const TITLE_ITEMS = ['시작', '조작법'];
+const MUSIC_VOLUME = { play: 0.55, menu: 0.3 };
 
 const END_MESSAGES: Record<Exclude<ShipStatus, 'alive' | 'cleared'>, string> = {
   exploded: '폭발',
@@ -27,9 +31,23 @@ type Mode = 'title' | 'controls' | 'select' | 'play';
 
 const keyboard = new Keyboard(window);
 const progress = Progress.fromBrowser();
+const settings = Settings.fromBrowser();
 const sfx = new Sfx();
-window.addEventListener('keydown', () => sfx.unlock());
-window.addEventListener('pointerdown', () => sfx.unlock());
+const music = new Music();
+const fps = new FpsMeter();
+function unlockAudio() {
+  sfx.unlock();
+  if (sfx.audio) music.attach(sfx.audio.ctx, sfx.audio.out);
+}
+window.addEventListener('keydown', unlockAudio);
+window.addEventListener('pointerdown', unlockAudio);
+
+const titleItems = () => [
+  '시작',
+  '조작법',
+  `화면: ${settings.values.camera === 'modern' ? '현대식' : '클래식'}`,
+  `음악: ${settings.values.music ? '켬' : '끔'}`,
+];
 
 // 3D 화면과 계기판을 같은 크기로 겹치는 4:3 영역
 const screen = document.createElement('div');
@@ -46,6 +64,14 @@ const dashboard = new Dashboard(dashCanvas);
 const hud = document.createElement('div');
 hud.id = 'hud';
 screen.appendChild(hud);
+const toast = document.createElement('div');
+toast.id = 'toast';
+toast.hidden = true;
+screen.appendChild(toast);
+const fpsLabel = document.createElement('div');
+fpsLabel.id = 'fps';
+fpsLabel.hidden = true;
+screen.appendChild(fpsLabel);
 const fadeLayer = document.createElement('div');
 fadeLayer.id = 'fade';
 document.body.appendChild(fadeLayer);
@@ -53,7 +79,11 @@ const menuLayer = document.createElement('div');
 document.body.appendChild(menuLayer);
 const menu = new Menu(menuLayer);
 
-const view: View = new ClassicView(renderer);
+const views: Record<'modern' | 'classic', View> = {
+  modern: new ModernView(renderer),
+  classic: new ClassicView(renderer),
+};
+let view = views[settings.values.camera];
 
 let mode: Mode = 'title';
 let titleIndex = 0;
@@ -68,7 +98,30 @@ function loadStage(i: number): Session {
 
 function showTitle() {
   mode = 'title';
-  menu.showTitle(TITLE_ITEMS, titleIndex);
+  menu.showTitle(titleItems(), titleIndex);
+}
+
+let toastTimer: number | undefined;
+function showToast(text: string) {
+  toast.textContent = text;
+  toast.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (toast.hidden = true), 1500);
+}
+
+function toggleCamera() {
+  settings.toggleCamera();
+  view = views[settings.values.camera];
+  view.setLevel(STAGES[stageIndex]);
+  fit();
+  showToast(`화면: ${settings.values.camera === 'modern' ? '현대식' : '클래식'} (C)`);
+  if (mode === 'title') showTitle();
+}
+
+function toggleMusic() {
+  settings.toggleMusic();
+  showToast(`음악: ${settings.values.music ? '켬' : '끔'} (M)`);
+  if (mode === 'title') showTitle();
 }
 
 function showSelect() {
@@ -93,10 +146,11 @@ function play(i: number) {
 
 function activateTitle() {
   if (titleIndex === 0) showSelect();
-  else {
+  else if (titleIndex === 1) {
     mode = 'controls';
     menu.showControls();
-  }
+  } else if (titleIndex === 2) toggleCamera();
+  else toggleMusic();
 }
 
 menu.onPick = (i) => {
@@ -116,7 +170,7 @@ function handleMenuKeys() {
   const enter = keyboard.consume('Enter');
   const esc = keyboard.consume('Escape');
   if (mode === 'title') {
-    const next = moveCursor(titleIndex, Number(down) - Number(up), TITLE_ITEMS.length);
+    const next = moveCursor(titleIndex, Number(down) - Number(up), titleItems().length);
     if (next !== titleIndex) {
       titleIndex = next;
       sfx.ui('move');
@@ -175,6 +229,13 @@ let lastState = session.sim.state;
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
+
+  if (keyboard.consume('KeyC')) toggleCamera();
+  if (keyboard.consume('KeyM')) toggleMusic();
+  if (keyboard.consume('KeyF')) fpsLabel.hidden = !fpsLabel.hidden;
+  fps.tick(dt);
+  if (!fpsLabel.hidden) fpsLabel.textContent = `${Math.round(fps.fps)} FPS`;
+  music.setVolume(settings.values.music ? MUSIC_VOLUME[mode === 'play' ? 'play' : 'menu'] : 0);
 
   let alpha = 1;
   if (mode === 'play') {
