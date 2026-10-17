@@ -1,29 +1,32 @@
-// 앱 진입점: 테스트 레벨을 원작 투영으로 렌더링하고 키보드로 플레이한다 (실패 시 자동 재시작)
+// 앱 진입점: 타이틀 → 스테이지 선택 → 플레이 흐름을 관리하고 원작 투영으로 렌더링한다
 import * as THREE from 'three';
-import testLevel from '../levels/test-01.json';
 import { Session } from './core/session';
 import type { ShipStatus } from './core/simulation';
 import { Keyboard } from './input/keyboard';
-import { parseLevel } from './level/parse';
+import { STAGES } from './level/catalog';
+import type { Level } from './level/types';
 import { createExplosion, updateExplosion } from './render/explosion';
 import { classicMaterial } from './render/material';
 import { SHIP_CAMERA_DISTANCE } from './render/projection';
 import { buildRoadGeometry, columnX } from './render/road';
 import { createShip } from './render/ship';
+import { Menu, moveCursor, SELECT_COLUMNS } from './ui/menu';
+import { Progress } from './ui/progress';
 
 const ASPECT = 4 / 3; // 원작 320×200을 4:3 모니터에 표시하던 비율
+const TITLE_ITEMS = ['시작', '조작법'];
 
-const level = parseLevel(testLevel);
-const keyboard = new Keyboard(window);
-const session = new Session(level);
-
-const END_MESSAGES: Record<Exclude<ShipStatus, 'alive'>, string> = {
-  cleared: '클리어! Enter: 다시 하기',
+const END_MESSAGES: Record<Exclude<ShipStatus, 'alive' | 'cleared'>, string> = {
   exploded: '폭발',
   fell: '추락',
   noFuel: '연료가 바닥났다',
   noOxygen: '산소가 바닥났다',
 };
+
+type Mode = 'title' | 'controls' | 'select' | 'play';
+
+const keyboard = new Keyboard(window);
+const progress = Progress.fromBrowser();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -35,13 +38,16 @@ document.body.appendChild(hud);
 const fadeLayer = document.createElement('div');
 fadeLayer.id = 'fade';
 document.body.appendChild(fadeLayer);
+const menuLayer = document.createElement('div');
+document.body.appendChild(menuLayer);
+const menu = new Menu(menuLayer);
 
 const scene = new THREE.Scene();
 scene.background = starfield();
 const camera = new THREE.Camera(); // 투영은 셰이더에서 하므로 위치만 쓴다
 
 const material = classicMaterial();
-const road = new THREE.Mesh(buildRoadGeometry(level), material);
+const road = new THREE.Mesh(new THREE.BufferGeometry(), material);
 road.frustumCulled = false;
 scene.add(road);
 const ship = createShip(material);
@@ -49,22 +55,119 @@ scene.add(ship);
 const explosion = createExplosion(material);
 scene.add(explosion);
 
+let mode: Mode = 'title';
+let titleIndex = 0;
+let stageIndex = 0;
+let session = loadStage(0);
+
+function loadStage(i: number): Session {
+  stageIndex = i;
+  road.geometry.dispose();
+  road.geometry = buildRoadGeometry(STAGES[i]);
+  return new Session(STAGES[i]);
+}
+
+function showTitle() {
+  mode = 'title';
+  menu.showTitle(TITLE_ITEMS, titleIndex);
+}
+
+function showSelect() {
+  mode = 'select';
+  if (session.sim.state.status !== 'alive' || session.sim.state.time > 0) session = loadStage(stageIndex);
+  menu.showSelect(
+    STAGES.map((s: Level, i) => ({ name: s.name, gravity: s.gravity, cleared: progress.has(i) })),
+    stageIndex,
+  );
+}
+
+function selectStage(i: number) {
+  if (i !== stageIndex) session = loadStage(i);
+  showSelect();
+}
+
+function play(i: number) {
+  session = loadStage(i);
+  mode = 'play';
+  menu.hide();
+}
+
+function activateTitle() {
+  if (titleIndex === 0) showSelect();
+  else {
+    mode = 'controls';
+    menu.showControls();
+  }
+}
+
+menu.onPick = (i) => {
+  if (mode === 'title') {
+    titleIndex = i;
+    activateTitle();
+  } else if (mode === 'controls') showTitle();
+  else if (mode === 'select') play(i);
+};
+
+function handleMenuKeys() {
+  const up = keyboard.consume('ArrowUp');
+  const down = keyboard.consume('ArrowDown');
+  const left = keyboard.consume('ArrowLeft');
+  const right = keyboard.consume('ArrowRight');
+  const enter = keyboard.consume('Enter');
+  const esc = keyboard.consume('Escape');
+  if (mode === 'title') {
+    const next = moveCursor(titleIndex, Number(down) - Number(up), TITLE_ITEMS.length);
+    if (next !== titleIndex) {
+      titleIndex = next;
+      showTitle();
+    }
+    if (enter) activateTitle();
+  } else if (mode === 'controls') {
+    if (enter || esc) showTitle();
+  } else if (mode === 'select') {
+    const delta = (Number(right) - Number(left)) + SELECT_COLUMNS * (Number(down) - Number(up));
+    const next = moveCursor(stageIndex, delta, STAGES.length);
+    if (next !== stageIndex) selectStage(next);
+    if (enter) play(stageIndex);
+    else if (esc) showTitle();
+  }
+}
+
+function handlePlayKeys() {
+  // 키를 매 프레임 소비해서, 플레이 중 누른 Enter가 끝난 뒤에 뒤늦게 반영되지 않게 한다
+  const pressedR = keyboard.consume('KeyR');
+  const pressedEnter = keyboard.consume('Enter');
+  const pressedEsc = keyboard.consume('Escape');
+  for (const code of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) keyboard.consume(code);
+  const status = session.sim.state.status;
+  if (pressedEsc) showSelect();
+  else if (status === 'cleared' && pressedEnter) {
+    if (stageIndex + 1 < STAGES.length) play(stageIndex + 1);
+    else showSelect();
+  } else if (pressedR || (pressedEnter && status !== 'alive')) session.restart();
+}
+
 function fit() {
   const w = Math.min(window.innerWidth, window.innerHeight * ASPECT);
   renderer.setSize(Math.floor(w), Math.floor(w / ASPECT));
 }
 window.addEventListener('resize', fit);
 fit();
+showTitle();
 
 let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  // 두 키 모두 매 프레임 소비해서, 플레이 중 누른 Enter가 끝난 뒤에 뒤늦게 반영되지 않게 한다
-  const pressedR = keyboard.consume('KeyR');
-  const pressedEnter = keyboard.consume('Enter');
-  if (pressedR || (pressedEnter && session.sim.state.status !== 'alive')) session.restart();
-  const alpha = session.update(dt, keyboard.input());
+
+  let alpha = 1;
+  if (mode === 'play') {
+    handlePlayKeys();
+    alpha = session.update(dt, keyboard.input());
+    if (session.sim.state.status === 'cleared' && !progress.has(stageIndex)) progress.mark(stageIndex);
+  } else {
+    handleMenuKeys();
+  }
 
   const a = session.sim.previous;
   const b = session.sim.state;
@@ -76,12 +179,16 @@ renderer.setAnimationLoop((now) => {
   updateExplosion(explosion, b.status === 'exploded' ? session.timeSinceEnd : null);
   camera.position.z = -(z - SHIP_CAMERA_DISTANCE);
 
+  const level = session.level;
   const pct = (v: number, max: number) => Math.max(0, Math.ceil((v / max) * 100));
+  hud.hidden = mode !== 'play';
   hud.textContent =
     b.status === 'alive'
-      ? `속도 ${Math.floor(b.speedLevel)} · 연료 ${pct(b.fuel, level.fuel)}% · 산소 ${pct(b.oxygen, level.oxygen)}%`
-      : END_MESSAGES[b.status];
-  fadeLayer.style.opacity = String(session.fade());
+      ? `${stageIndex + 1}. ${level.name} · 속도 ${Math.floor(b.speedLevel)} · 연료 ${pct(b.fuel, level.fuel)}% · 산소 ${pct(b.oxygen, level.oxygen)}%`
+      : b.status === 'cleared'
+        ? `클리어! Enter: ${stageIndex + 1 < STAGES.length ? '다음 스테이지' : '스테이지 선택'} · Esc: 스테이지 선택`
+        : END_MESSAGES[b.status];
+  fadeLayer.style.opacity = String(mode === 'play' ? session.fade() : 0);
   renderer.render(scene, camera);
 });
 

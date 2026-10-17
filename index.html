@@ -10,6 +10,27 @@
       canvas { display: block; }
       #hud { position: fixed; left: 12px; top: 10px; color: #cfe; font: 14px/1.4 monospace; }
       #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+      .menu { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 320px;
+        padding: 28px 36px; background: rgba(4, 6, 20, 0.82); border: 1px solid #2a6f8a; border-radius: 6px;
+        color: #cfe; font: 15px/1.6 system-ui, sans-serif; text-align: center; box-shadow: 0 0 40px #0a3a5a; }
+      .menu h1 { margin: 0; font: 900 52px/1 system-ui, sans-serif; letter-spacing: 6px; color: #ff5a6e;
+        text-shadow: 0 0 12px #ff2a4e, 3px 3px 0 #2ad0ff; }
+      .menu h2 { margin: 6px 0 12px; font-size: 20px; color: #7fe3ff; letter-spacing: 2px; }
+      .menu .sub { margin: 10px 0 18px; color: #8ab; font-size: 13px; }
+      .menu ul, .menu ol { list-style: none; margin: 0; padding: 0; }
+      .menu li { padding: 6px 14px; margin: 3px 0; border-radius: 4px; cursor: pointer; }
+      .menu li.on { background: #1d5c78; color: #fff; box-shadow: inset 0 0 0 1px #7fe3ff; }
+      .menu.select { min-width: 480px; }
+      .menu.select ol { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; text-align: left; }
+      .menu.select li { white-space: nowrap; }
+      .menu.select b { display: inline-block; width: 22px; color: #ffcf5a; }
+      .menu.select small { color: #8ab; margin-left: 6px; }
+      .menu.select em { color: #6f6; margin-left: 6px; font-style: normal; }
+      .menu table { margin: 0 auto 8px; border-collapse: collapse; text-align: left; }
+      .menu td { padding: 3px 12px; }
+      .menu td i { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; }
+      .menu .hint { margin: 16px 0 0; color: #789; font-size: 12px; cursor: pointer; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
