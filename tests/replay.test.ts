@@ -4,9 +4,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import testLevel from '../levels/test-01.json';
 import { compress, decodeInput, encodeInput, playReplay, type Replay } from '../src/core/replay';
-import { initialState, step, type Input, type ShipState } from '../src/core/simulation';
+import type { Input, ShipState } from '../src/core/simulation';
 import { parseLevel } from '../src/level/parse';
-import { autopilot, testLevelTarget } from './autopilot';
+import { autoplay, testLevelTarget } from './autopilot';
 
 const GOLDEN = new URL('./replays/test-01.json', import.meta.url);
 const level = parseLevel(testLevel);
@@ -17,15 +17,7 @@ interface Golden {
 }
 
 function recordAutopilot(): { inputs: Input[]; final: ShipState } {
-  let s = initialState(level);
-  const inputs: Input[] = [];
-  const target = testLevelTarget(level);
-  while (s.status === 'alive' && inputs.length < 70 * 120) {
-    const input = autopilot(level, s, target);
-    inputs.push(input);
-    s = step(s, input, level);
-  }
-  return { inputs, final: s };
+  return autoplay(level, testLevelTarget(level));
 }
 
 const summary = (s: ShipState): Golden['expected'] => ({
