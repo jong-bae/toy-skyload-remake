@@ -1,4 +1,4 @@
-// 클리어 기록 저장과 메뉴 커서 이동을 검증한다
+// 클리어 기록 저장, 메뉴 커서 이동, 계기판 표시값을 검증한다
 import { describe, expect, it } from 'vitest';
 import { initialState } from '../src/core/simulation';
 import { parseLevel } from '../src/level/parse';

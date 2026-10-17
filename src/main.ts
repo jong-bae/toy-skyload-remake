@@ -1,5 +1,7 @@
 // 앱 진입점: 타이틀 → 스테이지 선택 → 플레이 흐름을 관리하고 원작 투영으로 렌더링한다
 import * as THREE from 'three';
+import { detectEvents } from './audio/events';
+import { Sfx } from './audio/sfx';
 import { Session } from './core/session';
 import type { ShipStatus } from './core/simulation';
 import { Keyboard } from './input/keyboard';
@@ -28,6 +30,9 @@ type Mode = 'title' | 'controls' | 'select' | 'play';
 
 const keyboard = new Keyboard(window);
 const progress = Progress.fromBrowser();
+const sfx = new Sfx();
+window.addEventListener('keydown', () => sfx.unlock());
+window.addEventListener('pointerdown', () => sfx.unlock());
 
 // 3D 화면과 계기판을 같은 크기로 겹치는 4:3 영역
 const screen = document.createElement('div');
@@ -110,6 +115,7 @@ function activateTitle() {
 }
 
 menu.onPick = (i) => {
+  sfx.ui('select');
   if (mode === 'title') {
     titleIndex = i;
     activateTitle();
@@ -128,17 +134,26 @@ function handleMenuKeys() {
     const next = moveCursor(titleIndex, Number(down) - Number(up), TITLE_ITEMS.length);
     if (next !== titleIndex) {
       titleIndex = next;
+      sfx.ui('move');
       showTitle();
     }
-    if (enter) activateTitle();
+    if (enter) {
+      sfx.ui('select');
+      activateTitle();
+    }
   } else if (mode === 'controls') {
     if (enter || esc) showTitle();
   } else if (mode === 'select') {
-    const delta = (Number(right) - Number(left)) + SELECT_COLUMNS * (Number(down) - Number(up));
+    const delta = Number(right) - Number(left) + SELECT_COLUMNS * (Number(down) - Number(up));
     const next = moveCursor(stageIndex, delta, STAGES.length);
-    if (next !== stageIndex) selectStage(next);
-    if (enter) play(stageIndex);
-    else if (esc) showTitle();
+    if (next !== stageIndex) {
+      sfx.ui('move');
+      selectStage(next);
+    }
+    if (enter) {
+      sfx.ui('select');
+      play(stageIndex);
+    } else if (esc) showTitle();
   }
 }
 
@@ -168,6 +183,9 @@ fit();
 showTitle();
 
 let last = performance.now();
+// 효과음 이벤트는 같은 판 안에서만 비교한다 (재시작하면 연료가 차서 보급으로 오인할 수 있다)
+let lastSim = session.sim;
+let lastState = session.sim.state;
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
@@ -177,9 +195,13 @@ renderer.setAnimationLoop((now) => {
     handlePlayKeys();
     alpha = session.update(dt, keyboard.input());
     if (session.sim.state.status === 'cleared' && !progress.has(stageIndex)) progress.mark(stageIndex);
+    if (session.sim === lastSim) detectEvents(lastState, session.sim.state).forEach((e) => sfx.event(e));
   } else {
     handleMenuKeys();
   }
+  lastSim = session.sim;
+  lastState = session.sim.state;
+  sfx.engine(mode === 'play' && session.sim.state.status === 'alive' ? session.sim.state.speedLevel : null);
 
   const a = session.sim.previous;
   const b = session.sim.state;
