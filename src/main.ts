@@ -10,6 +10,7 @@ import { classicMaterial } from './render/material';
 import { SHIP_CAMERA_DISTANCE } from './render/projection';
 import { buildRoadGeometry, columnX } from './render/road';
 import { createShip } from './render/ship';
+import { Dashboard, dashboardValues } from './ui/dashboard';
 import { Menu, moveCursor, SELECT_COLUMNS } from './ui/menu';
 import { Progress } from './ui/progress';
 
@@ -28,13 +29,21 @@ type Mode = 'title' | 'controls' | 'select' | 'play';
 const keyboard = new Keyboard(window);
 const progress = Progress.fromBrowser();
 
+// 3D 화면과 계기판을 같은 크기로 겹치는 4:3 영역
+const screen = document.createElement('div');
+screen.id = 'screen';
+document.body.appendChild(screen);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
-document.body.appendChild(renderer.domElement);
+screen.appendChild(renderer.domElement);
+const dashCanvas = document.createElement('canvas');
+dashCanvas.id = 'dash';
+screen.appendChild(dashCanvas);
+const dashboard = new Dashboard(dashCanvas);
 
 const hud = document.createElement('div');
 hud.id = 'hud';
-document.body.appendChild(hud);
+screen.appendChild(hud);
 const fadeLayer = document.createElement('div');
 fadeLayer.id = 'fade';
 document.body.appendChild(fadeLayer);
@@ -148,8 +157,11 @@ function handlePlayKeys() {
 }
 
 function fit() {
-  const w = Math.min(window.innerWidth, window.innerHeight * ASPECT);
-  renderer.setSize(Math.floor(w), Math.floor(w / ASPECT));
+  const w = Math.floor(Math.min(window.innerWidth, window.innerHeight * ASPECT));
+  const h = Math.floor(w / ASPECT);
+  renderer.setSize(w, h);
+  screen.style.width = `${w}px`;
+  screen.style.height = `${h}px`;
 }
 window.addEventListener('resize', fit);
 fit();
@@ -179,12 +191,12 @@ renderer.setAnimationLoop((now) => {
   updateExplosion(explosion, b.status === 'exploded' ? session.timeSinceEnd : null);
   camera.position.z = -(z - SHIP_CAMERA_DISTANCE);
 
-  const level = session.level;
-  const pct = (v: number, max: number) => Math.max(0, Math.ceil((v / max) * 100));
+  dashCanvas.hidden = mode !== 'play';
+  if (mode === 'play') dashboard.draw(dashboardValues(b, session.level));
   hud.hidden = mode !== 'play';
   hud.textContent =
     b.status === 'alive'
-      ? `${stageIndex + 1}. ${level.name} · 속도 ${Math.floor(b.speedLevel)} · 연료 ${pct(b.fuel, level.fuel)}% · 산소 ${pct(b.oxygen, level.oxygen)}%`
+      ? `${stageIndex + 1}. ${session.level.name}`
       : b.status === 'cleared'
         ? `클리어! Enter: ${stageIndex + 1 < STAGES.length ? '다음 스테이지' : '스테이지 선택'} · Esc: 스테이지 선택`
         : END_MESSAGES[b.status];
