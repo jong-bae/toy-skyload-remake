@@ -1,16 +1,17 @@
-# 원근 투영 관계(s = 1/(y - 지평선))로 지면 높이의 블록 앞면 경계를 추적해 전진 거리를 추정한다
+# 원작의 깊이 매핑(s = 1/(y - 8))으로 지면 높이의 블록 앞면 경계를 추적해 전진 거리를 추정한다
 """
-측정 단위
-- 지평선 y_v = 32, 중앙 노면 반폭 = 카메라 높이 h (정지 화면에서 확인)
-- 화면 행 y의 지면까지 전진 거리 s = 1/(y - y_v)  [단위 K = 초점거리 × h]
-  (투영 공식만 쓰므로 원작의 화각을 몰라도 된다. 리메이크도 같은 투영을 쓰면 화면이 같아진다)
+원작 화면 투영 (docs/measurements.md 2장)
+- 좌우: 노면 폭이 y = 32에서 0으로 수렴한다. 반폭(px) = 칸 수 × ⅔ × (y - 32)
+- 깊이: 화면 행 y의 지면까지 거리 s = 1/(y - 8). 타일 1칸 = 0.00396
+  (등속 궤적이 시간에 직선이 되는 조건과 줄무늬 타일 간격이 균일해지는 조건이 모두 y = 8을 가리킨다)
 
 블록 앞면의 아랫선은 바닥과 만나므로 정확히 지면 높이에 있다.
 "바닥 색 바로 위에 블록 면 색"인 가로 경계를 프레임마다 찾고, 프레임 사이에 이어 붙여 궤적을 만든다.
 """
 import numpy as np
 
-Y_V = 32
+Y_D = 8          # 깊이 매핑 기준 행
+TILE = 0.00396   # 타일 1칸의 s 길이
 Y_MIN, Y_MAX = 36, 130  # 지면이 보이는 행 범위 (아래는 계기판)
 
 
@@ -24,7 +25,7 @@ def ground_edges(frame: np.ndarray, floor_rgb, is_face, min_run: int = 10) -> li
 
 
 def s_of(y: float) -> float:
-    return 1.0 / (y - Y_V)
+    return 1.0 / (y - Y_D)
 
 
 def link(edges_per_frame: list[list[int]], max_ds: float = 0.004) -> list[dict[int, int]]:
@@ -53,7 +54,7 @@ def link(edges_per_frame: list[list[int]], max_ds: float = 0.004) -> list[dict[i
 
 
 def solve_distance(tracks: list[dict[int, int]], n_frames: int, smooth: float = 1e-3) -> np.ndarray:
-    """프레임별 누적 전진 거리 D (K 단위, D[0] = 0).
+    """프레임별 누적 전진 거리 D (s 단위, D[0] = 0). 타일 수는 D / TILE.
 
     모든 궤적이 같은 이동을 공유한다는 조건 s_j(i) = c_j - D(i)를 가중 최소제곱으로 푼다.
     가중치는 픽셀 1칸에 해당하는 s 폭의 역제곱(근거리일수록 정밀). D의 2차 차분에 작은 평활 항을 둔다.
@@ -63,7 +64,7 @@ def solve_distance(tracks: list[dict[int, int]], n_frames: int, smooth: float = 
     rows, rhs, wts = [], [], []
     for j, tr in enumerate(tracks):
         for i, y in tr.items():
-            sigma = 1.0 / (y - Y_V) ** 2
+            sigma = 1.0 / (y - Y_D) ** 2
             rows.append((i, j))
             rhs.append(s_of(y))
             wts.append(1.0 / sigma)
