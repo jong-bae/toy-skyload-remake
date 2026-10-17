@@ -1,19 +1,12 @@
 // 테스트용 레벨 생성과 일정 시간 시뮬레이션 실행 도우미
 import { FIXED_DT } from '../src/core/config';
 import { initialState, NO_INPUT, step, type Input, type ShipState } from '../src/core/simulation';
-import type { Cell, Level } from '../src/level/types';
+import { parseLevel } from '../src/level/parse';
+import type { Level } from '../src/level/types';
 
-/**
- * 문자열로 레벨을 만든다. 배열 첫 줄이 출발점(줄 0), 각 줄은 7글자.
- * '_' 바닥(높이 0), '#' 블록(높이 1h), '.' 구멍
- */
+/** 문자열로 레벨을 만든다. 기호는 src/level/parse.ts 참조 */
 export function makeLevel(rows: string[], gravity = 500): Level {
-  const cell = (ch: string): Cell | null => {
-    if (ch === '_') return { top: 0, type: 'normal' };
-    if (ch === '#') return { top: 1, type: 'normal' };
-    return null;
-  };
-  return { name: 'test', gravity, rows: rows.map((r) => [...r].map(cell)) };
+  return parseLevel({ name: 'test', gravity, rows });
 }
 
 /** 같은 줄을 n번 반복한다 */

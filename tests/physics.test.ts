@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FIXED_DT, SHIP_WIDTH } from '../src/core/config';
 import { Simulation, initialState } from '../src/core/simulation';
+import { BLOCK_HEIGHT } from '../src/level/parse';
 import { FLAT, last, makeLevel, near, repeat, run } from './helpers';
 
 /** 착지 전까지의 체공 시간과 최고 높이 */
@@ -119,11 +120,11 @@ describe('충돌 (M-08, M-09)', () => {
   });
 
   it('블록 위로 뛰어오를 수 있다', () => {
-    const step = makeLevel([...repeat('_______', 2), ...repeat('#######', 20)], 100);
-    // 0.3초에 뛰면 최고점을 지나 블록 앞(줄 2)에 닿을 때 높이가 약 1.2h
-    const s = last(run(step, 3, (t) => ({ jump: t >= 0.3 && t < 0.36 }), { speedLevel: 6 }));
+    const step = makeLevel([...repeat('_______', 2), ...repeat('#######', 20)]);
+    // 0.6초에 뛰면 블록 앞(줄 2)에 닿을 때 높이가 블록(0.3h)보다 높다
+    const s = last(run(step, 3, (t) => ({ jump: t >= 0.6 && t < 0.66 }), { speedLevel: 6 }));
     expect(s.status).toBe('alive');
-    expect(s.y).toBe(1);
+    expect(s.y).toBe(BLOCK_HEIGHT);
   });
 });
 
