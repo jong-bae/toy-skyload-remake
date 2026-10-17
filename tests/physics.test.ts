@@ -157,6 +157,6 @@ describe('고정 스텝 루프', () => {
     const a = run(FLAT, 4, inputs);
     const b = run(FLAT, 4, inputs);
     expect(last(a)).toEqual(last(b));
-    expect(last(a)).not.toEqual(initialState());
+    expect(last(a)).not.toEqual(initialState(FLAT));
   });
 });

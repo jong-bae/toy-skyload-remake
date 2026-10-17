@@ -1,6 +1,6 @@
 // 우주선 몸체가 덮는 칸을 찾아 받침 높이와 가로막는 칸을 판정한다
-import { SHIP_LENGTH, SHIP_WIDTH, STEP_TOLERANCE } from './config';
-import { cellAt, type Level } from '../level/types';
+import { SHIP_LENGTH, SHIP_WIDTH, STEP_TOLERANCE, TUNNEL_CEILING } from './config';
+import { cellAt, type Cell, type Level } from '../level/types';
 
 const EPS = 1e-6;
 
@@ -32,12 +32,19 @@ export function supportHeight(level: Level, x: number, z: number): number | null
   return top;
 }
 
-/** 높이 y에 있는 몸체를 가로막는(표면이 더 높은) 칸 */
+/** 높이 y에 있는 몸체를 가로막는 칸: 표면이 더 높거나, 터널 지붕보다 높이 떠 있는 경우 */
 export function blockingCells(level: Level, x: number, z: number, y: number): CellRef[] {
   return covered(x, z).filter(({ col, row }) => {
     const cell = cellAt(level, col, row);
-    return cell !== null && cell.top > y + STEP_TOLERANCE;
+    if (cell === null) return false;
+    return cell.top > y + STEP_TOLERANCE || (cell.tunnel === true && y > cell.top + TUNNEL_CEILING);
   });
+}
+
+/** 몸체 중심 아래에서 실제로 딛고 있는 칸 (특수 블록 효과 판정용) */
+export function tileUnder(level: Level, x: number, z: number, y: number): Cell | null {
+  const cell = cellAt(level, Math.floor(x), Math.floor(z));
+  return cell !== null && Math.abs(cell.top - y) <= STEP_TOLERANCE ? cell : null;
 }
 
 /** 정면으로 막혔을 때 몸체가 멈출 z (가장 가까운 막는 줄 바로 앞) */

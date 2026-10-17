@@ -23,7 +23,7 @@ export function run(
   input: Partial<Input> | ((t: number) => Partial<Input>) = {},
   start: Partial<ShipState> = {},
 ): ShipState[] {
-  let s: ShipState = { ...initialState(), ...start };
+  let s: ShipState = { ...initialState(level), ...start };
   const out = [s];
   const n = Math.round(seconds / FIXED_DT);
   for (let i = 0; i < n; i++) {

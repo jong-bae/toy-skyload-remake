@@ -5,12 +5,18 @@ export type TileType = 'normal' | 'supplies' | 'boost' | 'sticky' | 'slippery' |
 export interface Cell {
   top: number;
   type: TileType;
+  /** 아치형 지붕이 덮인 칸. 안에서는 점프할 수 없다 */
+  tunnel?: boolean;
 }
 
 export interface Level {
   name: string;
   /** 원작 GRAV-O-METER 표시값 (100, 400, 500, 600, 900, 1700) */
   gravity: number;
+  /** 연료량 (주행 가능한 타일 수) */
+  fuel: number;
+  /** 산소량 (초) */
+  oxygen: number;
   /** rows[줄][칸]. 줄 0이 출발점, null은 구멍 */
   rows: (Cell | null)[][];
 }

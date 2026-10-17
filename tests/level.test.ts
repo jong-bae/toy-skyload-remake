@@ -36,7 +36,7 @@ describe('테스트 레벨 01', () => {
   });
 
   it('자동 조종으로 끝까지 살아서 도착한다', () => {
-    let s = initialState();
+    let s = initialState(level);
     // 마지막 2칸 구멍은 고속(약 29단계 이상)이어야 넘는다
     const target = (row: number) => (row < 55 ? 12 : 31);
     for (let i = 0; i < 70 * 60 && s.status === 'alive' && s.z < level.rows.length - 2; i++) {

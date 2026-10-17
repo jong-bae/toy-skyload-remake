@@ -1,22 +1,30 @@
 // 문자열 격자로 작성한 레벨 데이터를 Level 모델로 변환한다
-import { ROAD_COLUMNS } from '../core/config';
+import { DEFAULT_FUEL, DEFAULT_OXYGEN, ROAD_COLUMNS } from '../core/config';
 import type { Cell, Level } from './types';
 
 /** 레벨 파일 형식. rows는 출발점(줄 0)부터 순서대로, 각 줄은 7글자 */
 export interface LevelSource {
   name: string;
   gravity: number;
+  fuel?: number;
+  oxygen?: number;
   rows: string[];
 }
 
 /** 블록 높이 (h). 원작 로드 4 측면 블록 실측 약 0.29h */
 export const BLOCK_HEIGHT = 0.3;
 
-/** '.' 구멍, '_' 바닥, '#' 블록 */
+/** 바닥 기호. '.'은 구멍 */
 const LEGEND: Record<string, Cell | null> = {
   '.': null,
   _: { top: 0, type: 'normal' },
   '#': { top: BLOCK_HEIGHT, type: 'normal' },
+  S: { top: 0, type: 'supplies' },
+  B: { top: 0, type: 'boost' },
+  K: { top: 0, type: 'sticky' },
+  L: { top: 0, type: 'slippery' },
+  R: { top: 0, type: 'burning' },
+  T: { top: 0, type: 'normal', tunnel: true },
 };
 
 export function parseLevel(src: LevelSource): Level {
@@ -30,5 +38,11 @@ export function parseLevel(src: LevelSource): Level {
       return cell && { ...cell };
     });
   });
-  return { name: src.name, gravity: src.gravity, rows };
+  return {
+    name: src.name,
+    gravity: src.gravity,
+    fuel: src.fuel ?? DEFAULT_FUEL,
+    oxygen: src.oxygen ?? DEFAULT_OXYGEN,
+    rows,
+  };
 }

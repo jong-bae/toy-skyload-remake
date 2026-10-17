@@ -69,3 +69,29 @@ export const SHIP_LENGTH = 0.5;
 // 추락 (M-07)
 /** 이 높이 아래로 떨어지면 실패 */
 export const FALL_DEATH_Y = -1.5;
+
+// 연료·산소 (M-11, M-12)
+/** 기본 산소량 (초). 로드 0 실측: 20.83초 × 10칸 */
+export const DEFAULT_OXYGEN = 208;
+/** 기본 연료량 (주행 타일 수). 9단계 약 9초(≈17타일)에 1/22 소모한 약한 실측에서 추정 */
+export const DEFAULT_FUEL = 370;
+
+// 특수 블록 (M-13 미측정 → 가정값. 원작과 비교해 조정)
+/** Boost 위에서 속도 단계가 오르는 배율 (가속키 대비) */
+export const BOOST_FACTOR = 4;
+/** Sticky 위에서 속도 단계가 내려가는 배율 (감속키 대비) */
+export const STICKY_FACTOR = 4;
+
+// 터널 (M-14)
+/** 터널 지붕 높이 (h, 바닥 기준). 가정값 */
+export const TUNNEL_CEILING = 0.5;
+
+// 실패 후 자동 재시작까지 걸리는 시간 (초)
+export const RESTART_DELAY = {
+  exploded: 3.4, // 실측
+  fell: 5.1, // 실측
+  noOxygen: 3.0, // 실측 (마지막 칸이 사라지고 페이드까지)
+  noFuel: 3.0, // 가정
+} as const;
+/** 재시작 전 화면이 어두워지는 시간 */
+export const FADE_TIME = 1.0;
