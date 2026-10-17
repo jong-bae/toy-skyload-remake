@@ -13,6 +13,7 @@ import {
   SPEED_LEVEL_STEP_TIME,
   STEP_TOLERANCE,
   STICKY_FACTOR,
+  STICKY_MIN_LEVEL,
 } from './config';
 import { blockingCells, stopBefore, stopBeside, supportHeight, tileUnder } from './collision';
 import { forwardSpeed, gravityAccel, jumpVelocity, lateralSpeed } from './physics';
@@ -80,7 +81,7 @@ export function step(prev: ShipState, input: Input, level: Level, dt: number = F
   // 속도 단계: 가속·감속 모두 같은 비율, 자연 감속 없음. Boost·Sticky는 저절로 가속·감속
   let dir = Number(input.accelerate) - Number(input.brake);
   if (tile?.type === 'boost') dir += BOOST_FACTOR;
-  if (tile?.type === 'sticky') dir -= STICKY_FACTOR;
+  if (tile?.type === 'sticky' && s.speedLevel > STICKY_MIN_LEVEL) dir -= STICKY_FACTOR;
   s.speedLevel = Math.min(SPEED_LEVEL_MAX, Math.max(0, s.speedLevel + (dir * dt) / SPEED_LEVEL_STEP_TIME));
 
   // 전진과 정면 충돌

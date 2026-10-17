@@ -81,6 +81,8 @@ export const DEFAULT_FUEL = 370;
 export const BOOST_FACTOR = 4;
 /** Sticky 위에서 속도 단계가 내려가는 배율 (감속키 대비) */
 export const STICKY_FACTOR = 4;
+/** Sticky는 이 단계까지만 끌어내린다. 더 내리면 가속키로도 빠져나올 수 없다 */
+export const STICKY_MIN_LEVEL = 3;
 
 // 터널 (M-14)
 /** 터널 지붕 높이 (h, 바닥 기준). 가정값 */

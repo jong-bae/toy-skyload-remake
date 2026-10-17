@@ -25,6 +25,12 @@ describe('특수 블록', () => {
     expect(s.speedLevel).toBeCloseTo(20 - (STICKY_FACTOR * s.time) / SPEED_LEVEL_STEP_TIME, 6);
   });
 
+  it('Sticky에 붙잡혀도 가속키로 빠져나올 수 있다', () => {
+    const lv = level([...repeat('KKKKKKK', 10), ...repeat('_______', 10)]);
+    const s = last(run(lv, 15, { accelerate: true }, { speedLevel: 20 }));
+    expect(s.z).toBeGreaterThan(10);
+  });
+
   it('Slippery 위에서는 좌우로 조종할 수 없다', () => {
     const s = last(run(level(repeat('LLLLLLL', 50)), 0.5, { right: true }));
     expect(s.x).toBe(3.5);
