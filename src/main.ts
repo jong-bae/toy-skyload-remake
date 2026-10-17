@@ -1,4 +1,4 @@
-// 앱 진입점: 타이틀 → 스테이지 선택 → 플레이 흐름을 관리하고 원작 투영으로 렌더링한다
+// 앱 진입점: 타이틀 → 스테이지 선택 → 플레이 흐름을 관리하고 선택한 화면 모드로 렌더링한다
 import * as THREE from 'three';
 import { detectEvents } from './audio/events';
 import { Sfx } from './audio/sfx';
@@ -7,11 +7,8 @@ import type { ShipStatus } from './core/simulation';
 import { Keyboard } from './input/keyboard';
 import { STAGES } from './level/catalog';
 import type { Level } from './level/types';
-import { createExplosion, updateExplosion } from './render/explosion';
-import { classicMaterial } from './render/material';
-import { SHIP_CAMERA_DISTANCE } from './render/projection';
-import { buildRoadGeometry, columnX } from './render/road';
-import { createShip } from './render/ship';
+import { ClassicView } from './render/classic';
+import type { View } from './render/view';
 import { Dashboard, dashboardValues } from './ui/dashboard';
 import { Menu, moveCursor, SELECT_COLUMNS } from './ui/menu';
 import { Progress } from './ui/progress';
@@ -56,18 +53,7 @@ const menuLayer = document.createElement('div');
 document.body.appendChild(menuLayer);
 const menu = new Menu(menuLayer);
 
-const scene = new THREE.Scene();
-scene.background = starfield();
-const camera = new THREE.Camera(); // 투영은 셰이더에서 하므로 위치만 쓴다
-
-const material = classicMaterial();
-const road = new THREE.Mesh(new THREE.BufferGeometry(), material);
-road.frustumCulled = false;
-scene.add(road);
-const ship = createShip(material);
-scene.add(ship);
-const explosion = createExplosion(material);
-scene.add(explosion);
+const view: View = new ClassicView(renderer);
 
 let mode: Mode = 'title';
 let titleIndex = 0;
@@ -76,8 +62,7 @@ let session = loadStage(0);
 
 function loadStage(i: number): Session {
   stageIndex = i;
-  road.geometry.dispose();
-  road.geometry = buildRoadGeometry(STAGES[i]);
+  view.setLevel(STAGES[i]);
   return new Session(STAGES[i]);
 }
 
@@ -175,6 +160,7 @@ function fit() {
   const w = Math.floor(Math.min(window.innerWidth, window.innerHeight * ASPECT));
   const h = Math.floor(w / ASPECT);
   renderer.setSize(w, h);
+  view.resize(w, h);
   screen.style.width = `${w}px`;
   screen.style.height = `${h}px`;
 }
@@ -206,12 +192,15 @@ renderer.setAnimationLoop((now) => {
   const a = session.sim.previous;
   const b = session.sim.state;
   const lerp = (p: number, q: number) => p + (q - p) * alpha;
-  const z = lerp(a.z, b.z);
-  ship.position.set(columnX(lerp(a.x, b.x)), lerp(a.y, b.y), -z);
-  ship.visible = b.status !== 'exploded';
-  explosion.position.copy(ship.position);
-  updateExplosion(explosion, b.status === 'exploded' ? session.timeSinceEnd : null);
-  camera.position.z = -(z - SHIP_CAMERA_DISTANCE);
+  view.render({
+    x: lerp(a.x, b.x),
+    y: lerp(a.y, b.y),
+    z: lerp(a.z, b.z),
+    speedLevel: b.speedLevel,
+    status: b.status,
+    timeSinceEnd: session.timeSinceEnd,
+    dt,
+  });
 
   dashCanvas.hidden = mode !== 'play';
   if (mode === 'play') dashboard.draw(dashboardValues(b, session.level));
@@ -223,25 +212,4 @@ renderer.setAnimationLoop((now) => {
         ? `클리어! Enter: ${stageIndex + 1 < STAGES.length ? '다음 스테이지' : '스테이지 선택'} · Esc: 스테이지 선택`
         : END_MESSAGES[b.status];
   fadeLayer.style.opacity = String(mode === 'play' ? session.fade() : 0);
-  renderer.render(scene, camera);
 });
-
-/** 화면에 고정된 별 배경 (원작 배경도 움직이지 않는 그림) */
-function starfield(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 640;
-  canvas.height = 400;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#05040f';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  let seed = 7;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 220; i++) {
-    const v = 120 + Math.floor(rand() * 135);
-    ctx.fillStyle = `rgb(${v},${v},${Math.min(255, v + 30)})`;
-    ctx.fillRect(Math.floor(rand() * canvas.width), Math.floor(rand() * canvas.height), rand() < 0.1 ? 2 : 1, 1);
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
